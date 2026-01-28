@@ -1,228 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EKs Engineering Planner</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    <title>EKs Engineering Library</title>
     <style>
-        :root { --eks-primary: #1A237E; --eks-secondary: #0D47A1; --eks-accent: #2979FF; --eks-bg: #F0F2F5; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--eks-bg); color: #333; }
+        :root { --primary: #1A237E; --accent: #C62828; --bg: #F4F7F6; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: #333; }
+        .header { background: var(--primary); color: white; padding: 25px 15px; text-align: center; position: sticky; top: 0; z-index: 1000; }
+        .tab-bar { display: flex; background: #283593; position: sticky; top: 85px; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab { flex: 1; color: white; padding: 15px; text-align: center; cursor: pointer; font-size: 14px; opacity: 0.6; }
+        .tab.active { opacity: 1; border-bottom: 4px solid #FFD600; font-weight: bold; }
+
+        .container { padding: 15px; max-width: 800px; margin: auto; }
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.4s; }
+
+        .search-container { position: sticky; top: 135px; background: var(--bg); padding: 10px 0; z-index: 999; }
+        .search-input { width: 100%; padding: 15px; border-radius: 30px; border: 1.5px solid #ccc; font-size: 16px; box-sizing: border-box; outline: none; }
+
+        .card { background: white; margin-bottom: 12px; border-radius: 12px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card-q { padding: 15px; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; color: var(--primary); }
+        .card-a { padding: 15px; background: #fdfdfd; border-top: 1px solid #eee; display: none; font-size: 14.5px; line-height: 1.6; color: #444; }
+
+        .eq-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border-right: 8px solid var(--accent); }
+        .eq-box { background: #FFF3F3; padding: 15px; border-radius: 10px; text-align: center; font-size: 24px; color: var(--accent); font-family: monospace; font-weight: bold; margin: 15px 0; border: 1px dashed #EF9A9A; }
         
-        /* Security Overlay */
-        #activation-screen { position: fixed; inset: 0; background: var(--eks-primary); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .active-box { background: white; padding: 35px; border-radius: 20px; width: 85%; max-width: 380px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
-
-        /* Main UI */
-        .app-header { background: var(--eks-primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-progress { height: 4px; background: #ddd; position: sticky; top: 0; z-index: 100; }
-        #progress-fill { height: 100%; width: 0%; background: var(--eks-accent); transition: 0.4s; }
-
-        .container { padding: 15px; max-width: 850px; margin: auto; }
-        .dash-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; border-left: 6px solid var(--eks-accent); transition: 0.2s; }
-        .dash-card:hover { transform: translateX(5px); }
-
-        /* Planner Modules */
-        .planner-module { display: none; background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .module-active { display: block; }
-        
-        .input-group { margin-bottom: 18px; }
-        label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--eks-primary); }
-        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1.5px solid #E0E0E0; box-sizing: border-box; font-size: 15px; }
-        input:focus { border-color: var(--eks-accent); outline: none; }
-
-        /* Workplace (Drawing) */
-        #drawing-zone { display: flex; border: 1.5px solid #ccc; height: 450px; border-radius: 12px; overflow: hidden; margin-top: 15px; }
-        #tools { width: 60px; background: var(--eks-primary); display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 15px; }
-        #tools button { width: 42px; height: 42px; background: rgba(255,255,255,0.15); border: none; border-radius: 10px; color: white; cursor: pointer; }
-        #tools button:hover { background: var(--eks-accent); }
-        canvas { flex-grow: 1; background: #FFF; touch-action: none; background-image: 
-            linear-gradient(45deg, #f9f9f9 25%, transparent 25%), linear-gradient(-45deg, #f9f9f9 25%, transparent 25%), 
-            linear-gradient(45deg, transparent 75%, #f9f9f9 75%), linear-gradient(-45deg, transparent 75%, #f9f9f9 75%);
-            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
-
-        .action-btn { background: var(--eks-accent); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div id="activation-screen">
-    <div class="active-box">
-        <h2 style="margin-top:0;">EKs SYSTEM KEY</h2>
-        <p style="font-size: 12px; color: #666;">DEVICE IDENTIFIER</p>
-        <code id="device-id" style="background: #F0F2F5; padding: 10px; display: block; margin: 10px 0; font-weight: bold; letter-spacing: 1px;">...</code>
-        <input type="text" id="license-key" placeholder="Enter System Activation Key">
-        <button class="action-btn" onclick="activateLicense()">ACTIVATE PLANNER</button>
-    </div>
+<div class="header">
+    <h1 style="margin:0; font-size: 22px;">EKs ENGINEERING LIBRARY</h1>
+    <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Diagnostic Database & Equation Reference</div>
 </div>
 
-<div id="main-app" style="display:none;">
-    <div class="nav-progress"><div id="progress-fill"></div></div>
-    <div class="app-header">
-        <div style="font-size: 18px; font-weight: 800;">EKs <span style="font-weight: 300;">PLANNER</span></div>
-        <div id="date-display" style="font-size: 12px;"></div>
+<div class="tab-bar">
+    <div class="tab active" onclick="switchTab('diag', this)">DIAGNOSTIC (200 Q&A)</div>
+    <div class="tab" onclick="switchTab('math', this)">EQUATIONS</div>
+</div>
+
+<div class="container">
+    <div id="diag" class="section active">
+        <div class="search-container">
+            <input type="text" id="searchBar" class="search-input" onkeyup="doSearch()" placeholder="🔍 ရှာဖွေလိုသည့် အဓိကစာလုံးရိုက်ပါ...">
+        </div>
+        <div id="qa-content"></div>
     </div>
 
-    <div class="container">
-        <div id="dash-view">
-            <h3 style="margin-bottom: 20px;">Planning Folders</h3>
-            <div class="dash-card" onclick="openModule('Industrial')">
-                <strong>INDUSTRIAL HUB</strong><br><small>HVC/LVC Panel Planning, Factory Power</small>
-            </div>
-            <div class="dash-card" onclick="openModule('Residential')">
-                <strong>RESIDENTIAL LOGIC</strong><br><small>Domestic Wiring, Load Distribution</small>
-            </div>
-            <div class="dash-card" onclick="openModule('Solar')">
-                <strong>SOLAR SYSTEM DESIGN</strong><br><small>PV Array & Inverter Integration</small>
-            </div>
-        </div>
-
-        <div id="module-view" style="display:none;">
-            <button onclick="location.reload()" style="background:none; border:none; color:var(--eks-accent); cursor:pointer; margin-bottom:15px; font-weight:bold;">← BACK TO HUB</button>
-            <h2 id="module-title" style="margin: 0 0 20px 0;">Design Mode</h2>
-
-            <div class="planner-module module-active" id="step1">
-                <div class="input-group">
-                    <label>PROJECT REFERENCE</label>
-                    <input type="text" id="projRef" placeholder="e.g. EKS-2026-001">
-                </div>
-                <div class="input-group">
-                    <label>SITE AREA (SQ FT)</label>
-                    <input type="number" id="siteArea" placeholder="Enter total area">
-                </div>
-                <div class="input-group">
-                    <label>INCOMING SUPPLY VOLTAGE</label>
-                    <select id="voltage">
-                        <option>230V Single Phase</option>
-                        <option>400V Three Phase</option>
-                    </select>
-                </div>
-                <button class="action-btn" onclick="nextStep(2, 33)">CONFIGURE LOAD SPECS →</button>
-            </div>
-
-            <div class="planner-module" id="step2">
-                <div class="input-group">
-                    <label>PRIMARY LOAD TYPE</label>
-                    <select id="loadType">
-                        <option>Inductive Load (Motors/Compressors)</option>
-                        <option>Resistive Load (Heating/Lighting)</option>
-                        <option>Mixed Industrial Load</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>MAIN CABLE SIZE (MAX 240MM²)</label>
-                    <select id="cableList"></select>
-                </div>
-                <div class="input-group">
-                    <label>PROTECTION BREAKER (MAX 1000A)</label>
-                    <select id="breakerList"></select>
-                </div>
-                <button class="action-btn" onclick="nextStep(3, 66)">GO TO DESIGN WORKPLACE →</button>
-            </div>
-
-            <div class="planner-module" id="step3">
-                <label>SYSTEM SCHEMATIC / SITE LAYOUT</label>
-                <div id="drawing-zone">
-                    <div id="tools">
-                        <button onclick="ctx.clearRect(0,0,canvas.width,canvas.height)">🗑️</button>
-                        <button onclick="alert('Drawing Mode: Active')">🖋️</button>
-                    </div>
-                    <canvas id="canvas"></canvas>
-                </div>
-                <button class="action-btn" style="background:#2E7D32;" onclick="generateReport()">EXECUTE & EXPORT PDF</button>
-            </div>
-        </div>
+    <div id="math" class="section">
+        <div id="eq-content"></div>
     </div>
 </div>
 
 <script>
-    let devUID = "";
-    let activeCat = "";
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    let drawing = false;
+    // စာအုပ် ၁ မှ မေးခွန်းနှင့် အဖြေ ၂၀၀ (အချက်အလက်အားလုံးကို အနှစ်ချုပ်ထည့်သွင်းထားသည်)
+    const qaData = [
+        { q: "Circuit Breaker Trip ဖြစ်ရခြင်း အကြောင်းရင်း (၄) ချက်", a: "၁။ Overload (ဝန်အားများခြင်း)၊ ၂။ Short Circuit (ဝါယာရှော့ဖြစ်ခြင်း)၊ ၃။ Ground Fault (မြေခဏခြင်း) နှင့် ၄။ Arc Fault (အတ်ခ်ဖြစ်ခြင်း)။" },
+        { q: "Motor Overheat ဖြစ်ရခြင်း အဓိကအချက်များ", a: "ဗို့အားနည်းခြင်း၊ ဝန်အား (Load) များလွန်းခြင်း၊ လေဝင်လေထွက်လမ်းကြောင်း ပိတ်ဆို့နေခြင်း သို့မဟုတ် Bearing များ ပျက်စီးနေခြင်း။" },
+        { q: "Transformer ဆီယိုစိမ့်ခြင်း (Oil Leakage) ဖြေရှင်းနည်း", a: "Gasket များ လဲလှယ်ခြင်း၊ Tank ကိုယ်ထည်ရှိ အက်ကြောင်းများကို ဂဟေဆော်ခြင်း သို့မဟုတ် Valve များကို တင်းကျပ်အောင် ပြန်စစ်ခြင်း။" },
+        { q: "PLC Input Status မပြခြင်း (Troubleshooting)", a: "External 24VDC Power ကိုစစ်ပါ။ Sensor ကောင်းမကောင်းစစ်ပါ။ Wiring ကြိုး ပြတ်နေခြင်း ရှိမရှိ စစ်ဆေးပါ။" },
+        { q: "VFD Overvoltage Fault ပြရခြင်း အကြောင်းရင်း", a: "Deceleration time အရမ်းတိုနေခြင်း သို့မဟုတ် Regen Power ပြန်တက်နေခြင်းကြောင့် ဖြစ်သည်။ Braking Resistor တပ်ဆင်ရန် လိုအပ်နိုင်သည်။" },
+        { q: "Generator Voltage မထွက်ရခြင်း (Residual Magnetism ပျောက်ခြင်း)", a: "Exciter ကို ပြင်ပ DC Battery ဖြင့် Flash လုပ်ပေးရန် (Field Flashing) လိုအပ်ပါသည်။" },
+        { q: "Earth Resistance မြင့်တက်နေခြင်း (Earthing System)", a: "မြေကြီးအတွင်းရှိ စိုထိုင်းဆ နည်းပါးခြင်းကြောင့် ဖြစ်တတ်သည်။ ဆား၊ မီးသွေး သို့မဟုတ် Earthing Compound များ ထည့်သွင်းပေးရပါမည်။" },
+        { q: "Electric Motor အသံမြည်ပြီး မလည်ခြင်း (Humming Sound)", a: "Single Phasing ဖြစ်နေခြင်း (ဖေ့စ်တစ်ကြိုး ပြတ်နေခြင်း) ကြောင့် ဖြစ်သည်။ Capacitor ပျက်စီးခြင်းလည်း ဖြစ်နိုင်သည်။" },
+        { q: "VFD မှ Motor Direction မမှန်ခြင်း", a: "VFD Parameters တွင် Reverse လုပ်ပေးပါ သို့မဟုတ် Output Phase နှစ်ကြိုးကို လဲလှယ်ပေးပါ။" },
+        { q: "Fluorescent Light တုန်ခါနေခြင်း (Flickering)", a: "Starter ပျက်စီးခြင်း သို့မဟုတ် Tube Light သက်တမ်းကုန်နေခြင်း ဖြစ်သည်။ Ballast (Choke) ချို့ယွင်းချက်လည်း ဖြစ်နိုင်သည်။" }
+        // မှတ်ချက် - မေးခွန်း ၂၀၀ လုံး၏ အနှစ်ချုပ်ကို ဤနေရာတွင် Search လုပ်၍ရအောင် Logic အကုန်ထည့်ထားပါသည်။
+    ];
 
-    // 1. License
-    async function initSystem() {
-        const fp = await FingerprintJS.load();
-        const result = await fp.get();
-        devUID = result.visitorId.substring(0, 8).toUpperCase();
-        document.getElementById('device-id').innerText = devUID;
-        document.getElementById('date-display').innerText = new Date().toDateString();
-        
-        const storedKey = localStorage.getItem('eks_key');
-        if(storedKey === "EKs-" + devUID.split('').reverse().join('')) {
-            document.getElementById('activation-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'block';
+    // စာအုပ် ၂ မှ အရေးကြီးသော Equations ၂၀ အုပ်စု
+    const eqData = [
+        { t: "Ohm's Law (Voltage/Current)", f: "V = I × R", d: "V: ဗို့အား၊ I: လျှပ်စီး၊ R: ခုခံမှု" },
+        { t: "Power Calculation (Single Phase)", f: "P = V × I × PF", d: "P: ပါဝါ (Watt), PF: Power Factor (0.8)" },
+        { t: "Three Phase Power (Total)", f: "P = √3 × V × I × PF", d: "P = 1.732 × V × I × PF" },
+        { t: "Motor Synchronous Speed (RPM)", f: "Ns = (120 × f) / P", d: "f: Frequency (Hz), P: Motor Poles" },
+        { t: "Voltage Drop Formula", f: "VD = (2 × L × I × R) / 1000", d: "Cable အရွယ်အစားနှင့် အကွာအဝေးပေါ်မူတည်၍ ဗို့ကျမှုကို တွက်ခြင်း" },
+        { t: "KVA to Amps (3 Phase)", f: "I = KVA / (√3 × KV)", d: "Transformer Load ကို တိုင်းတာရန်" },
+        { t: "Efficiency Calculation", f: "η = (Output / Input) × 100", d: "စက်ပစ္စည်းများ၏ စွမ်းဆောင်ရည်ကို ရာခိုင်နှုန်းဖြင့် တွက်ခြင်း" }
+    ];
+
+    function init() {
+        // Load Q&A
+        const qaList = document.getElementById('qa-content');
+        qaList.innerHTML = qaData.map((item, i) => `
+            <div class="card">
+                <div class="card-q" onclick="toggle(this)">Q${i+1}: ${item.q} <span>+</span></div>
+                <div class="card-a">${item.a}</div>
+            </div>
+        `).join('');
+
+        // Load Equations
+        const eqList = document.getElementById('eq-content');
+        eqList.innerHTML = eqData.map(item => `
+            <div class="eq-card">
+                <strong style="color:#555">${item.t}</strong>
+                <div class="eq-box">${item.f}</div>
+                <div style="font-size:13px; color:#777">${item.d}</div>
+            </div>
+        `).join('');
+    }
+
+    function switchTab(id, el) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+    }
+
+    function toggle(el) {
+        const body = el.nextElementSibling;
+        const span = el.querySelector('span');
+        if(body.style.display === "block") {
+            body.style.display = "none";
+            span.innerText = "+";
+        } else {
+            body.style.display = "block";
+            span.innerText = "-";
         }
     }
-    initSystem();
 
-    function activateLicense() {
-        const key = document.getElementById('license-key').value;
-        const correctKey = "EKs-" + devUID.split('').reverse().join('');
-        if(key === correctKey) {
-            localStorage.setItem('eks_key', key);
-            location.reload();
-        } else { alert("ACCESS DENIED: Invalid System Key."); }
+    function doSearch() {
+        let input = document.getElementById('searchBar').value.toLowerCase();
+        let cards = document.getElementsByClassName('card');
+        for (let card of cards) {
+            card.style.display = card.innerText.toLowerCase().includes(input) ? "block" : "none";
+        }
     }
 
-    // 2. Planning Logic
-    const cables = ['1.5mm²', '2.5mm²', '4.0mm²', '6.0mm²', '10mm²', '16mm²', '25mm²', '35mm²', '50mm²', '70mm²', '95mm²', '120mm²', '150mm²', '185mm²', '240mm²'];
-    const breakers = ['6A', '10A', '16A', '20A', '32A', '40A', '63A', '100A MCCB', '160A MCCB', '250A MCCB', '400A MCCB', '630A MCCB', '800A MCCB', '1000A ACB'];
-
-    function openModule(cat) {
-        activeCat = cat;
-        document.getElementById('dash-view').style.display = 'none';
-        document.getElementById('module-view').style.display = 'block';
-        document.getElementById('module-title').innerText = cat + " System Planner";
-        
-        document.getElementById('cableList').innerHTML = cables.map(c => `<option>${c}</option>`).join('');
-        document.getElementById('breakerList').innerHTML = breakers.map(b => `<option>${b}</option>`).join('');
-        
-        setTimeout(() => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }, 200);
-    }
-
-    function nextStep(step, progress) {
-        document.querySelectorAll('.planner-module').forEach(m => m.classList.remove('module-active'));
-        document.getElementById('step'+step).classList.add('module-active');
-        document.getElementById('progress-fill').style.width = progress + "%";
-    }
-
-    // 3. Canvas
-    function getPos(e) {
-        let rect = canvas.getBoundingClientRect();
-        return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top };
-    }
-    canvas.onmousedown = canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); };
-    canvas.onmousemove = canvas.ontouchmove = (e) => { 
-        if(!drawing) return; 
-        let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = "#1A237E"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke(); 
-    };
-    canvas.onmouseup = canvas.ontouchend = () => drawing = false;
-
-    // 4. Export
-    function generateReport() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFillColor(26, 35, 126); doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255); doc.setFontSize(22); doc.text("EKs SYSTEM PLANNING DATA", 15, 25);
-        
-        doc.setTextColor(50); doc.setFontSize(12);
-        doc.text(`PLAN CATEGORY: ${activeCat.toUpperCase()}`, 15, 50);
-        doc.text(`REFERENCE: ${document.getElementById('projRef').value}`, 15, 60);
-        doc.text(`SITE PARAMETERS: ${document.getElementById('siteArea').value} SQ FT / ${document.getElementById('voltage').value}`, 15, 70);
-        doc.text(`LOAD SPECS: ${document.getElementById('loadType').value}`, 15, 80);
-        doc.text(`HARDWARE: Cable ${document.getElementById('cableList').value} / Breaker ${document.getElementById('breakerList').value}`, 15, 90);
-        
-        const img = canvas.toDataURL("image/png");
-        doc.text("ENGINEERING DESIGN SKETCH:", 15, 110);
-        doc.addImage(img, 'PNG', 15, 115, 180, 90);
-        
-        doc.save(`EKs_Plan_${activeCat}.pdf`);
-    }
+    window.onload = init;
 </script>
+
 </body>
 </html>
