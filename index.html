@@ -3,89 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EKs Professional Planner</title>
+    <title>EKs Engineering Planner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
     <style>
-        :root { --eks-blue: #0D47A1; --eks-dark: #002171; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #eceff1; color: #333; }
+        :root { --eks-primary: #1A237E; --eks-secondary: #0D47A1; --eks-accent: #2979FF; --eks-bg: #F0F2F5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--eks-bg); color: #333; }
         
-        /* Activation Screen */
-        #activation-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--eks-blue); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .active-box { background: white; padding: 30px; border-radius: 15px; width: 85%; max-width: 400px; text-align: center; color: #333; }
+        /* Security Overlay */
+        #activation-screen { position: fixed; inset: 0; background: var(--eks-primary); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .active-box { background: white; padding: 35px; border-radius: 20px; width: 85%; max-width: 380px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+
+        /* Main UI */
+        .app-header { background: var(--eks-primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-progress { height: 4px; background: #ddd; position: sticky; top: 0; z-index: 100; }
+        #progress-fill { height: 100%; width: 0%; background: var(--eks-accent); transition: 0.4s; }
+
+        .container { padding: 15px; max-width: 850px; margin: auto; }
+        .dash-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; border-left: 6px solid var(--eks-accent); transition: 0.2s; }
+        .dash-card:hover { transform: translateX(5px); }
+
+        /* Planner Modules */
+        .planner-module { display: none; background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .module-active { display: block; }
         
-        /* App UI */
-        .header { background: var(--eks-blue); color: white; padding: 15px; text-align: center; }
-        .container { padding: 15px; max-width: 800px; margin: auto; }
-        .folder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
-        .folder { background: white; padding: 25px; border-radius: 12px; text-align: center; cursor: pointer; border-bottom: 5px solid var(--eks-blue); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .step-panel { display: none; background: white; padding: 20px; border-radius: 10px; margin-top: 10px; }
-        .active { display: block; }
+        .input-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--eks-primary); }
+        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1.5px solid #E0E0E0; box-sizing: border-box; font-size: 15px; }
+        input:focus { border-color: var(--eks-accent); outline: none; }
 
-        /* Drawing Workplace */
-        #work-place { display: flex; border: 2px solid #ccc; height: 400px; margin: 10px 0; border-radius: 5px; overflow: hidden; }
-        #sidebar { width: 60px; background: var(--eks-blue); display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 10px; }
-        #sidebar button { width: 40px; height: 40px; background: white; border: none; border-radius: 5px; cursor: pointer; }
-        canvas { flex-grow: 1; background: #fff; touch-action: none; background-image: radial-gradient(#ddd 1px, transparent 1px); background-size: 20px 20px; }
+        /* Workplace (Drawing) */
+        #drawing-zone { display: flex; border: 1.5px solid #ccc; height: 450px; border-radius: 12px; overflow: hidden; margin-top: 15px; }
+        #tools { width: 60px; background: var(--eks-primary); display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 15px; }
+        #tools button { width: 42px; height: 42px; background: rgba(255,255,255,0.15); border: none; border-radius: 10px; color: white; cursor: pointer; }
+        #tools button:hover { background: var(--eks-accent); }
+        canvas { flex-grow: 1; background: #FFF; touch-action: none; background-image: 
+            linear-gradient(45deg, #f9f9f9 25%, transparent 25%), linear-gradient(-45deg, #f9f9f9 25%, transparent 25%), 
+            linear-gradient(45deg, transparent 75%, #f9f9f9 75%), linear-gradient(-45deg, transparent 75%, #f9f9f9 75%);
+            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
 
-        input, select, .btn { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        .btn { background: var(--eks-blue); color: white; font-weight: bold; border: none; cursor: pointer; }
-        .back-btn { background: #607d8b; width: auto; padding: 5px 15px; margin-bottom: 10px; }
+        .action-btn { background: var(--eks-accent); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <div id="activation-screen">
     <div class="active-box">
-        <h2 style="color: var(--eks-blue);">EKs LICENSE</h2>
-        <p>DEVICE ID:</p>
-        <code id="device-id" style="background: #eee; padding: 5px; display: block; margin: 10px 0; word-break: break-all;">Generating...</code>
-        <input type="text" id="license-key" placeholder="Enter License Key">
-        <button class="btn" onclick="activateLicense()">ACTIVATE</button>
-        <p style="font-size: 11px; color: #777;">Send Device ID to Admin for License Key.</p>
+        <h2 style="margin-top:0;">EKs SYSTEM KEY</h2>
+        <p style="font-size: 12px; color: #666;">DEVICE IDENTIFIER</p>
+        <code id="device-id" style="background: #F0F2F5; padding: 10px; display: block; margin: 10px 0; font-weight: bold; letter-spacing: 1px;">...</code>
+        <input type="text" id="license-key" placeholder="Enter System Activation Key">
+        <button class="action-btn" onclick="activateLicense()">ACTIVATE PLANNER</button>
     </div>
 </div>
 
 <div id="main-app" style="display:none;">
-    <div class="header"><h3>EKs FIELD PLANNER</h3></div>
+    <div class="nav-progress"><div id="progress-fill"></div></div>
+    <div class="app-header">
+        <div style="font-size: 18px; font-weight: 800;">EKs <span style="font-weight: 300;">PLANNER</span></div>
+        <div id="date-display" style="font-size: 12px;"></div>
+    </div>
+
     <div class="container">
-        <div id="folder-screen">
-            <div class="folder-grid">
-                <div class="folder" onclick="startProj('Industrial')">🏭<br>Industrial</div>
-                <div class="folder" onclick="startProj('Residential')">🏠<br>Residential</div>
-                <div class="folder" onclick="startProj('Solar')">☀️<br>Solar</div>
-                <div class="folder" onclick="startProj('Maintenance')">🔧<br>Maintenance</div>
+        <div id="dash-view">
+            <h3 style="margin-bottom: 20px;">Planning Folders</h3>
+            <div class="dash-card" onclick="openModule('Industrial')">
+                <strong>INDUSTRIAL HUB</strong><br><small>HVC/LVC Panel Planning, Factory Power</small>
+            </div>
+            <div class="dash-card" onclick="openModule('Residential')">
+                <strong>RESIDENTIAL LOGIC</strong><br><small>Domestic Wiring, Load Distribution</small>
+            </div>
+            <div class="dash-card" onclick="openModule('Solar')">
+                <strong>SOLAR SYSTEM DESIGN</strong><br><small>PV Array & Inverter Integration</small>
             </div>
         </div>
 
-        <div id="project-form" style="display:none;">
-            <button class="btn back-btn" onclick="location.reload()">← Back</button>
-            <h4 id="cat-title" style="color: var(--eks-blue); margin: 5px 0;">Project</h4>
+        <div id="module-view" style="display:none;">
+            <button onclick="location.reload()" style="background:none; border:none; color:var(--eks-accent); cursor:pointer; margin-bottom:15px; font-weight:bold;">← BACK TO HUB</button>
+            <h2 id="module-title" style="margin: 0 0 20px 0;">Design Mode</h2>
 
-            <div class="step-panel active" id="step1">
-                <input type="text" id="pName" placeholder="Project Name">
-                <input type="text" id="cName" placeholder="Client Name">
-                <button class="btn" onclick="nextStep(2)">Next: Safety →</button>
+            <div class="planner-module module-active" id="step1">
+                <div class="input-group">
+                    <label>PROJECT REFERENCE</label>
+                    <input type="text" id="projRef" placeholder="e.g. EKS-2026-001">
+                </div>
+                <div class="input-group">
+                    <label>SITE AREA (SQ FT)</label>
+                    <input type="number" id="siteArea" placeholder="Enter total area">
+                </div>
+                <div class="input-group">
+                    <label>INCOMING SUPPLY VOLTAGE</label>
+                    <select id="voltage">
+                        <option>230V Single Phase</option>
+                        <option>400V Three Phase</option>
+                    </select>
+                </div>
+                <button class="action-btn" onclick="nextStep(2, 33)">CONFIGURE LOAD SPECS →</button>
             </div>
 
-            <div class="step-panel" id="step2">
-                <div id="safety-checks" style="line-height: 2;"></div>
-                <button class="btn" onclick="nextStep(3)">Next: Materials →</button>
+            <div class="planner-module" id="step2">
+                <div class="input-group">
+                    <label>PRIMARY LOAD TYPE</label>
+                    <select id="loadType">
+                        <option>Inductive Load (Motors/Compressors)</option>
+                        <option>Resistive Load (Heating/Lighting)</option>
+                        <option>Mixed Industrial Load</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>MAIN CABLE SIZE (MAX 240MM²)</label>
+                    <select id="cableList"></select>
+                </div>
+                <div class="input-group">
+                    <label>PROTECTION BREAKER (MAX 1000A)</label>
+                    <select id="breakerList"></select>
+                </div>
+                <button class="action-btn" onclick="nextStep(3, 66)">GO TO DESIGN WORKPLACE →</button>
             </div>
 
-            <div class="step-panel" id="step3">
-                <select id="cables"></select>
-                <select id="breakers"></select>
-                <input type="number" id="qty" placeholder="Quantity">
-                <button class="btn" onclick="nextStep(4)">Next: Work Place →</button>
-            </div>
-
-            <div class="step-panel" id="step4">
-                <div id="work-place">
-                    <div id="sidebar"><button onclick="ctx.clearRect(0,0,canvas.width,canvas.height)">🗑️</button></div>
+            <div class="planner-module" id="step3">
+                <label>SYSTEM SCHEMATIC / SITE LAYOUT</label>
+                <div id="drawing-zone">
+                    <div id="tools">
+                        <button onclick="ctx.clearRect(0,0,canvas.width,canvas.height)">🗑️</button>
+                        <button onclick="alert('Drawing Mode: Active')">🖋️</button>
+                    </div>
                     <canvas id="canvas"></canvas>
                 </div>
-                <button class="btn" style="background: #2e7d32;" onclick="generatePDF()">GENERATE REPORT (PDF)</button>
+                <button class="action-btn" style="background:#2E7D32;" onclick="generateReport()">EXECUTE & EXPORT PDF</button>
             </div>
         </div>
     </div>
@@ -93,55 +138,59 @@
 
 <script>
     let devUID = "";
-    let currentCat = "";
+    let activeCat = "";
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    // 1. License System
-    async function initDevice() {
+    // 1. License
+    async function initSystem() {
         const fp = await FingerprintJS.load();
         const result = await fp.get();
-        devUID = result.visitorId.substring(0, 10).toUpperCase();
+        devUID = result.visitorId.substring(0, 8).toUpperCase();
         document.getElementById('device-id').innerText = devUID;
-        if(localStorage.getItem('eks_key') === "EKs-" + devUID.split('').reverse().join('')) showApp();
+        document.getElementById('date-display').innerText = new Date().toDateString();
+        
+        const storedKey = localStorage.getItem('eks_key');
+        if(storedKey === "EKs-" + devUID.split('').reverse().join('')) {
+            document.getElementById('activation-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+        }
     }
-    initDevice();
+    initSystem();
 
     function activateLicense() {
-        let key = document.getElementById('license-key').value;
-        if(key === "EKs-" + devUID.split('').reverse().join('')) {
+        const key = document.getElementById('license-key').value;
+        const correctKey = "EKs-" + devUID.split('').reverse().join('');
+        if(key === correctKey) {
             localStorage.setItem('eks_key', key);
-            showApp();
-        } else { alert("Wrong Key!"); }
-    }
-    function showApp() { document.getElementById('activation-screen').style.display='none'; document.getElementById('main-app').style.display='block'; }
-
-    // 2. Project Logic
-    const cableData = ['1.5mm²', '2.5mm²', '4.0mm²', '6.0mm²', '10mm²', '16mm²', '25mm²', '35mm²', '50mm²', '70mm²', '95mm²', '120mm²', '150mm²', '185mm²', '240mm²'];
-    const breakerData = ['6A', '10A', '16A', '20A', '32A', '40A', '63A', '100A MCCB', '160A MCCB', '250A MCCB', '400A MCCB', '630A MCCB', '800A MCCB', '1000A ACB'];
-
-    function startProj(cat) {
-        currentCat = cat;
-        document.getElementById('folder-screen').style.display='none';
-        document.getElementById('project-form').style.display='block';
-        document.getElementById('cat-title').innerText = cat + " Project Log";
-        
-        document.getElementById('cables').innerHTML = cableData.map(c => `<option>${c}</option>`).join('');
-        document.getElementById('breakers').innerHTML = breakerData.map(b => `<option>${b}</option>`).join('');
-        
-        const sft = { 'Industrial': ['LOTO Checked', 'PPE Worn', 'Grounding OK'], 'Residential': ['Main Switch Off', 'Ladder OK'], 'Solar': ['DC Isolated', 'Roof Harness'], 'Maintenance': ['Scheduled cut'] };
-        document.getElementById('safety-checks').innerHTML = (sft[cat] || sft['Residential']).map(s => `<label><input type="checkbox"> ${s}</label><br>`).join('');
-        
-        setTimeout(() => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }, 100);
+            location.reload();
+        } else { alert("ACCESS DENIED: Invalid System Key."); }
     }
 
-    function nextStep(n) {
-        document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById('step'+n).classList.add('active');
+    // 2. Planning Logic
+    const cables = ['1.5mm²', '2.5mm²', '4.0mm²', '6.0mm²', '10mm²', '16mm²', '25mm²', '35mm²', '50mm²', '70mm²', '95mm²', '120mm²', '150mm²', '185mm²', '240mm²'];
+    const breakers = ['6A', '10A', '16A', '20A', '32A', '40A', '63A', '100A MCCB', '160A MCCB', '250A MCCB', '400A MCCB', '630A MCCB', '800A MCCB', '1000A ACB'];
+
+    function openModule(cat) {
+        activeCat = cat;
+        document.getElementById('dash-view').style.display = 'none';
+        document.getElementById('module-view').style.display = 'block';
+        document.getElementById('module-title').innerText = cat + " System Planner";
+        
+        document.getElementById('cableList').innerHTML = cables.map(c => `<option>${c}</option>`).join('');
+        document.getElementById('breakerList').innerHTML = breakers.map(b => `<option>${b}</option>`).join('');
+        
+        setTimeout(() => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }, 200);
     }
 
-    // 3. Drawing Canvas
+    function nextStep(step, progress) {
+        document.querySelectorAll('.planner-module').forEach(m => m.classList.remove('module-active'));
+        document.getElementById('step'+step).classList.add('module-active');
+        document.getElementById('progress-fill').style.width = progress + "%";
+    }
+
+    // 3. Canvas
     function getPos(e) {
         let rect = canvas.getBoundingClientRect();
         return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top };
@@ -149,25 +198,30 @@
     canvas.onmousedown = canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); };
     canvas.onmousemove = canvas.ontouchmove = (e) => { 
         if(!drawing) return; 
-        let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = "#0D47A1"; ctx.lineWidth = 2; ctx.stroke(); 
+        let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = "#1A237E"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke(); 
     };
     canvas.onmouseup = canvas.ontouchend = () => drawing = false;
 
-    // 4. PDF Generation
-    function generatePDF() {
+    // 4. Export
+    function generateReport() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(20); doc.setTextColor(13, 71, 161);
-        doc.text("EKs FIELD REPORT", 20, 20);
-        doc.setFontSize(12); doc.setTextColor(0);
-        doc.text(`Category: ${currentCat}`, 20, 35);
-        doc.text(`Project: ${document.getElementById('pName').value}`, 20, 45);
-        doc.text(`Material: ${document.getElementById('cables').value} / ${document.getElementById('breakers').value}`, 20, 55);
+        
+        doc.setFillColor(26, 35, 126); doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255); doc.setFontSize(22); doc.text("EKs SYSTEM PLANNING DATA", 15, 25);
+        
+        doc.setTextColor(50); doc.setFontSize(12);
+        doc.text(`PLAN CATEGORY: ${activeCat.toUpperCase()}`, 15, 50);
+        doc.text(`REFERENCE: ${document.getElementById('projRef').value}`, 15, 60);
+        doc.text(`SITE PARAMETERS: ${document.getElementById('siteArea').value} SQ FT / ${document.getElementById('voltage').value}`, 15, 70);
+        doc.text(`LOAD SPECS: ${document.getElementById('loadType').value}`, 15, 80);
+        doc.text(`HARDWARE: Cable ${document.getElementById('cableList').value} / Breaker ${document.getElementById('breakerList').value}`, 15, 90);
         
         const img = canvas.toDataURL("image/png");
-        doc.text("Site Sketch:", 20, 75);
-        doc.addImage(img, 'PNG', 20, 80, 160, 80);
-        doc.save("EKs_Report.pdf");
+        doc.text("ENGINEERING DESIGN SKETCH:", 15, 110);
+        doc.addImage(img, 'PNG', 15, 115, 180, 90);
+        
+        doc.save(`EKs_Plan_${activeCat}.pdf`);
     }
 </script>
 </body>
